@@ -1,0 +1,21 @@
+# ignore .root files
+*.root
+
+#ignore the file from the compilation
+*.d
+*.so
+*.pcm
+
+# ignore pdf files
+*.pdf
+
+# ignore txt files
+*.txt
+
+#ignore images
+*.png
+*jpg
+*.jpeg
+
+#ignore vscode settings
+.vscode/
