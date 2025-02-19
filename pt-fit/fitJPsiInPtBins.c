@@ -41,7 +41,7 @@
 #include "RooHist.h"
 
 // My headers: needed to save the results in the tree
-#include "savedVarInMassFits.h"
+#include "../library/savedVarInMassFits.h"
 
 using namespace RooFit;
 
