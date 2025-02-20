@@ -243,6 +243,18 @@ void doOneDataFit(TH1D *hData, RooDataSet data,
   if(!gIsChi2fit) fit_pt = Pt_fit_func->fitTo(*Hist_Data,Extended(kTRUE),SumW2Error(kTRUE),Save(),Range(""));
   if(gIsChi2fit)  fit_pt = Pt_fit_func->chi2FitTo(*Hist_Data,Extended(kTRUE),SumW2Error(kTRUE),Save(),Range(""));
 
+  // Start creating a frame with only the data and the full fit
+  RooPlot *frameFit = pt.frame(Title("Frame with data and full fit curve"));
+  // plot the data
+  Hist_Data->plotOn(frameFit,Name("Hist_Data"), Binning(ptBinning),MarkerStyle(20),MarkerSize(0.9),RooFit::DataError(RooAbsData::SumW2));
+  // Plot the full model
+  Pt_fit_func->plotOn(frameFit,Name("Pt_fit_func"), LineColor(kBlack), LineWidth(2));
+
+  // use this fram to compute the chi2
+  int nParams = fit_pt->floatParsFinal().getSize();
+  int ndf = gPtFitBinning.size()-1 - nParams;
+  double chi2_red = frameFit->chiSquare(nParams);
+
   // ------plot fit------------------------------------------
   TCanvas *cPt = new TCanvas("cPt","cPt",800,800);
   RooPlot* frame_pt = pt.frame(Title("Pt fit")) ;
@@ -278,11 +290,10 @@ void doOneDataFit(TH1D *hData, RooDataSet data,
   frame_pt->Draw();
   gPad->SetLogy();
 
-  double chi2 = frame_pt->chiSquare(); 
   TLatex latex;
   latex.SetNDC();
   latex.SetTextSize(0.04); // Set text size
-  latex.DrawLatex(gXpos, gYpos, Form("#chi^{2}/ndf = %.2f", chi2));
+  latex.DrawLatex(gXpos, gYpos, Form("#chi^{2}/ndf = %.2f", chi2_red));
 
   TLegend *legend = new TLegend(0.6, 0.6, 0.85, 0.85); // Adjust position (x1, y1, x2, y2)
   legend->SetBorderSize(0); // No border
