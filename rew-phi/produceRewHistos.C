@@ -67,11 +67,19 @@ void produceRewHistos(string dataType = "recoMC", bool applyKine = true, bool us
   }
   // or use a function defined here
   else{
-    gRewFuc = new TF1("gRewFuc","pcFunc",-TMath::Pi(),TMath::Pi(),3);
-    gRewFuc->SetParameter(0,1);
-    gRewFuc->SetParameter(1,0.8);
-    gRewFuc->SetParameter(2,4.5);
+    gRewFuc = new TF1("gRewFuc",pcFunc,-TMath::Pi(),TMath::Pi(),3);
+    gRewFuc->FixParameter(0,1);
+    gRewFuc->FixParameter(1,0.8);
+    gRewFuc->FixParameter(2,4.5);
+
+    TCanvas *cc = new TCanvas();
+    gRewFuc->Draw();
+
+    TFile *saveRewFunc = new TFile("rew-func-correct.root","recreate");
+    gRewFuc->Write();
+    saveRewFunc->Close();
   }
+
   // exit if there is no fuction
   if(gRewFuc==NULL) return;
 
