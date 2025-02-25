@@ -60,21 +60,28 @@ void cosmetics(TH1D *h, string dataType){
 // entry point
 void produceRewHistos(string dataType = "recoMC", bool applyKine = true, bool useFuncFromFile = false){
 
-  // read the rew function
+  // read the rew function obtained from the fit to the phi distrib. of data
   if(useFuncFromFile){
     TFile *funcFile = new TFile("rewFunc.root");
     gRewFuc = (TF1*)funcFile->Get("fitFunc");
   }
-  // or use a function defined here
+  // or use a function defined here: same shape of the func used to fit the data, 
+  // but different amplitudes
   else{
+    // these values allow to reweight the based on the gen values and match the data
     gRewFuc = new TF1("gRewFuc",pcFunc,-TMath::Pi(),TMath::Pi(),3);
     gRewFuc->FixParameter(0,1);
     gRewFuc->FixParameter(1,0.8);
     gRewFuc->FixParameter(2,4.5);
-
+    
+    // change the normalization such that the integral is 1
+    double integral = gRewFuc->Integral(-TMath::Pi(),TMath::Pi());
+    gRewFuc->SetParameter(0,1/integral);
+    cout<<"integral = "<<gRewFuc->Integral(-TMath::Pi(),TMath::Pi())<<endl;
     TCanvas *cc = new TCanvas();
     gRewFuc->Draw();
 
+    // save the correct function to do the re-weighting
     TFile *saveRewFunc = new TFile("rew-func-correct.root","recreate");
     gRewFuc->Write();
     saveRewFunc->Close();
