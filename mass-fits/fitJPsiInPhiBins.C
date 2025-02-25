@@ -25,6 +25,7 @@
 #include "TROOT.h"
 #include "TSystem.h"
 #include "TEnv.h"
+#include "TF1.h"
 
 // RooFit headers
 #include "RooGlobalFunc.h"
@@ -46,6 +47,32 @@ using namespace RooFit;
 
 // My headers: needed to save the results in the tree
 #include "../library/savedVarInMassFits.h"
+
+// function for the re-weighting
+double func(double *x, double *par){
+  return par[0]*TMath::Sin(par[0]);
+}
+
+// to setup reco and gen trees
+Float_t fM;
+Float_t fPt;
+Float_t fRap;
+Float_t fPhi;
+Float_t fGenPhi;
+Float_t fPhiAv;
+
+void setupTree(TTree *t, string tp){
+  t->SetBranchAddress("fM",     &fM);
+  t->SetBranchAddress("fPt",    &fPt);
+  t->SetBranchAddress("fRap",   &fRap);
+  t->SetBranchAddress("fPhi",   &fPhi);
+  if(tp == "reco") t->SetBranchAddress("fGenPhi",&fGenPhi);
+  t->SetBranchAddress("fPhiAv", &fPhiAv);
+
+  // Note: in the reco tree fPhi is the reco value and fGenPhi the generated one
+  // in the gen tree fPhi is the gen value.
+  // Maybe change it (also for the other quantities)?
+}
 
 // -----------------------------------------------------------------
 // global variables, to be set to drive the fits
@@ -102,7 +129,7 @@ string gIdentifier = "";
 
 // -----------------------------------------------------------------
 // do one data fit
-void doOneDataFit(TTree *dataTree, TFile *saveFile, float binID[3])
+void doOneDataFit(TTree *dataTree, TFile *saveFile, float binID[3], TTree *recoTree, TTree *genTree)
 {
   // number of times the function has been called
   static int nCalls = 0;
@@ -134,10 +161,76 @@ void doOneDataFit(TTree *dataTree, TFile *saveFile, float binID[3])
   }
 
 
-  // import the tree
+  // import the tree of the data
   RooDataSet inData("inData", "inData", RooArgSet(*neutronID, pt, mass, phiAverage, rapidity), Import(*dataTree));
   // check the structure of the data
   inData.Print();
+
+  // get the function to rew the MC
+  TFile *funcFile = new TFile("../rew-phi/rew-func-correct.root");
+  TF1* gRewFuc = (TF1*)funcFile->Get("gRewFuc");
+  
+  // decalre the histos for reco, gen and AxE
+  int binsAxE = 1;
+  TH1D *hReco = new TH1D("hReco","hReco",binsAxE, minMass, maxMass);
+  hReco->GetXaxis()->SetTitle("m_{#mu#mu} (GeV/#it{c}^{2})");
+  TH1D *hGen = (TH1D*)hReco->Clone("hGen");
+  hGen->SetTitle("hGen");
+  TH1D *hAxE = (TH1D*)hReco->Clone("hAxE");
+  hAxE->SetTitle("Acc#times#epsilon");
+
+  // fill the histos
+  // reco MC
+  setupTree(recoTree, "reco");
+  for(Long64_t ev=0; ev<recoTree->GetEntries(); ev++){
+    recoTree->GetEntry(ev);
+    // apply kine
+    if(fM < minMass || fM > maxMass) continue;
+    if(fPt < minPt || fPt > maxPt) continue;
+    if(fRap < minRapidity || fRap > maxRapidity) continue;
+    if(fPhiAv < binID[1] || fPhiAv > binID[2]) continue;
+    // fill the histo with the weights
+    hReco->Fill(fM, gRewFuc->Eval(fGenPhi));
+  }
+  // check that the kine is applied correctly on the reco tree
+  RooDataSet recoData("recoData", "recoData", RooArgSet(pt, mass, phiAverage, rapidity), Import(*recoTree));
+  cout<<"check: "<<hReco->GetEntries()<<"\t"<<recoData.numEntries()<<endl;
+
+  // gen MC
+  setupTree(genTree, "gen");
+  for(Long64_t ev=0; ev<genTree->GetEntries(); ev++){
+    genTree->GetEntry(ev);
+    // apply kine
+    if(fM < minMass || fM > maxMass) continue;
+    if(fPt < minPt || fPt > maxPt) continue;
+    if(fRap < minRapidity || fRap > maxRapidity) continue;
+    if(fPhiAv < binID[1] || fPhiAv > binID[2]) continue;
+    // fill the histo with the weights
+    hGen->Fill(fM, gRewFuc->Eval(fPhi));
+  }
+  cout<<"gen: "<<hGen->GetEntries()<<endl;
+
+  // fill the histo of the AxE
+  hAxE->Divide(hReco,hGen,1,1,"B");
+
+  // compute the AxE (def in savedVarInMassFits.h header)
+  AxE = hAxE->GetBinContent(1);
+  errAxE = hAxE->GetBinError(1);
+
+  // check the AxE 
+  // remove the comment to have the plots
+  /*
+    TCanvas canvas;
+    canvas.Divide(2,0);
+    canvas.cd(1);
+    hGen->SetLineColor(kRed+1);
+    hGen->Draw("same histo");
+    hReco->Draw("same histo");
+    canvas.cd(2);
+    hAxE->Draw("ep");
+
+    canvas.SaveAs("weighted_mass_hist.png");
+  */
 
   // build pdfs
   // --> j/psi
@@ -342,6 +435,9 @@ void doOneDataFit(TTree *dataTree, TFile *saveFile, float binID[3])
   errNumBkg = nBg.getError();
   entries = inData.numEntries();
   errEntries = TMath::Sqrt(entries);
+  numJPsiCorr = numJPsi/AxE;
+  // compute the error on the corrected numer of j/psi propagaing the errors from the fit and from the AxE
+  errNumJPsiCorr = TMath::Sqrt((errNumJPsi/AxE)*(errNumJPsi/AxE) + (numJPsi/(AxE*AxE)*errAxE)*(numJPsi/(AxE*AxE)*errAxE));
 
   meanPhiAverage = (binID[1] + binID[2])/2;
   saveFitTree->Fill();
@@ -354,7 +450,7 @@ void doOneDataFit(TTree *dataTree, TFile *saveFile, float binID[3])
 
 // -----------------------------------------------------------------
 // entry point: set up and call fitting function
-void fitJPsiInPhiBins(string nClass = "noSelection", int nPhiBins = 3, const char *config = "jPsi", bool isMC = false, bool notShow = false)
+void fitJPsiInPhiBins(string nClass = "noSelection", int nPhiBins = 1, const char *config = "jPsi", bool isMC = false, bool notShow = false)
 {
   // choose to show or not the canvas
   if(notShow) gROOT->SetBatch(kTRUE);
@@ -371,19 +467,40 @@ void fitJPsiInPhiBins(string nClass = "noSelection", int nPhiBins = 3, const cha
   TFile *dataFile = NULL;
   TTree *dataTree = NULL;
 
+  // get the trees with the reco MC
+  TFile *recoFile = NULL;
+  TTree *recoTree = NULL;
+
+  // get the trees with the reco MC
+  TFile *genFile = NULL;
+  TTree *genTree = NULL;
+
   if(!isMC){
     dataFile = new TFile("../Data/merged-data.root");
-    dataTree = (TTree *) dataFile->Get("DF_2336518079279520/O2dimu");
+    dataTree = (TTree*) dataFile->Get("DF_2336518079279520/O2dimu");
+
+    recoFile = new TFile("../MonteCarlo/reco_tree.root");
+    recoTree = (TTree*) recoFile->Get("DF_2336518085565631/dimu"); 
+
+    genFile = new TFile("../MonteCarlo/gen_tree.root");
+    genTree = (TTree*) genFile->Get("DF_2336518085565631/dimu"); 
   }
   else if(isMC){
-    dataFile = new TFile("../MC-test/reco.root");
-    dataTree = (TTree *) dataFile->Get("DF_2336518085565599/dimu");
+
+    recoFile = new TFile("../MonteCarlo/reco_tree.root");
+    recoTree = (TTree*) recoFile->Get("DF_2336518085565631/dimu"); 
+
+    dataTree = recoTree;
+    
+    genFile = new TFile("../MonteCarlo/gen_tree.root");
+    genTree = (TTree*) genFile->Get("DF_2336518085565631/dimu");
+
     gNeutronClass = "noSelection";
   }
   
   // check if the data are there
-  if(dataTree==NULL){
-    cout<<"Data file missing. Bye!"<<endl;
+  if(dataTree==NULL || recoTree==NULL || genTree==NULL){
+    cout<<"At least one file is missing. Bye!"<<endl;
     return;
   }
   // read the config file
@@ -464,7 +581,7 @@ void fitJPsiInPhiBins(string nClass = "noSelection", int nPhiBins = 3, const cha
 		cout<<"max == "<<binID[2]<<endl;
 
 		// do the fit
-  	doOneDataFit(dataTree, saveFile, binID);
+  	doOneDataFit(dataTree, saveFile, binID, recoTree, genTree);
 
 		actualPhiMin = actualPhiMin + incrementPhi;
     actualPhiMax = actualPhiMax + incrementPhi;
