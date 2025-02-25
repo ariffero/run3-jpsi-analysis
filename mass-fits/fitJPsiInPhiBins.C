@@ -71,6 +71,11 @@ double alphaR = 0;
 // --> exponential
 double lambda = 0.0;
 
+// Expo3 (as Nazar)
+// func = exp(p_1*m + p_2*m^2)
+double p_1 = -2.55;
+double p_2 = 0.2;
+
 // --> switches 
 bool isNFixed = false;
 bool isSigmaFixed = false;
@@ -164,6 +169,8 @@ void doOneDataFit(TTree *dataTree, TFile *saveFile, float binID[3], TTree *recoT
 
   // import the tree of the data
   RooDataSet inData("inData", "inData", RooArgSet(*neutronID, pt, mass, phiAverage, rapidity), Import(*dataTree));
+  // number of events
+  int nEvents = inData.numEntries();
   // check the structure of the data
   inData.Print();
 
@@ -267,16 +274,23 @@ void doOneDataFit(TTree *dataTree, TFile *saveFile, float binID[3], TTree *recoT
   RooFormulaVar aR2("aR2","@0",RooArgList(aR));
   RooCrystalBall psi2s("psi2s", "psi2s", mass, m02, sL2, sR2, aL2, nL2, aR2, nR2);
 
-  // --> non-resonant background
-  RooRealVar b("#lambda","exponent",-lambda,-3,-0.2);
-  RooExponential nrBg("nrBg","nrBg",mass,b);
+  // --> non-resonant background: 
+  // bkg = exp(-lamba*mass)
+  //RooRealVar b("#lambda","exponent",-lambda,-3,-0.2);
+  //RooExponential nrBg("nrBg","nrBg",mass,b);
+
+  // --> non-resonant bkg, as Nazar
+  // Define parameters p1, p2
+  // bkg = exp(p1*mass + p2*mass^2)
+  RooRealVar p1("p1", "p1", p_1, -3, 0.0);
+  RooRealVar p2("p2", "p2", p_2, -0.5, 0.5);
+  RooGenericPdf nrBg("nrBg", "nrBg", "exp(@1*@0 + @2*@0*@0)", RooArgList(mass, p1, p2));
 
   // model and fit
   // --> combine the PDFs
-  int nEvents = inData.numEntries();
   RooRealVar nJpsi("N_{J/#psi}","Number of J/psi events",0.8*nEvents,0.05*nEvents,nEvents);
   RooRealVar nPsi2s("N_{#psi'}","Number of psi(2s) events",0.05*nEvents,0,nEvents);
-  RooRealVar nBg("N_{bg}","Number of BG events",0.1*nEvents,0,nEvents);
+  RooRealVar nBg("N_{bg}","Number of BG events",0.15*nEvents,0,nEvents);
 
   RooAddPdf *fitData = NULL;
   if (includePsi2s) {
@@ -542,7 +556,7 @@ void fitJPsiInPhiBins(string nClass = "noSelection", int nPhiBins = 1, const cha
   isSigmaFixed = false;
   isAlphaFixed = true;
   isNFixed     = true;
-  includePsi2s = false;
+  includePsi2s = true;
   // --> exponential
   lambda = 0.7;
   isLambdaFixed = false;
