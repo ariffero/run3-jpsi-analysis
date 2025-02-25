@@ -2,6 +2,7 @@
 // makes a fit to the invariant mass distribution of muon pairs (at fwd rapidity)
 // fit function is J/psi + psi(2s) (optional)
 // it is possible to choose the number of bins in phi and the neutron emission class
+// it is also possible to select kinematic regions, using a config.cfg file (needed)
 //
 
 // -----------------------------------------------------------------
@@ -48,32 +49,6 @@ using namespace RooFit;
 // My headers: needed to save the results in the tree
 #include "../library/savedVarInMassFits.h"
 
-// function for the re-weighting
-double func(double *x, double *par){
-  return par[0]*TMath::Sin(par[0]);
-}
-
-// to setup reco and gen trees
-Float_t fM;
-Float_t fPt;
-Float_t fRap;
-Float_t fPhi;
-Float_t fGenPhi;
-Float_t fPhiAv;
-
-void setupTree(TTree *t, string tp){
-  t->SetBranchAddress("fM",     &fM);
-  t->SetBranchAddress("fPt",    &fPt);
-  t->SetBranchAddress("fRap",   &fRap);
-  t->SetBranchAddress("fPhi",   &fPhi);
-  if(tp == "reco") t->SetBranchAddress("fGenPhi",&fGenPhi);
-  t->SetBranchAddress("fPhiAv", &fPhiAv);
-
-  // Note: in the reco tree fPhi is the reco value and fGenPhi the generated one
-  // in the gen tree fPhi is the gen value.
-  // Maybe change it (also for the other quantities)?
-}
-
 // -----------------------------------------------------------------
 // global variables, to be set to drive the fits
 // -----------------------------------------------------------------
@@ -105,10 +80,6 @@ bool isLambdaFixed = false;
 bool isChi2Fit = false;
 bool excludeJPsi = false;
 
-// position of the legend info
-float gXpos = 0.17;
-float gYpos = 0.85;
-
 // -----------------------------------------------------------------
 // global variables useful in the macro
 // -----------------------------------------------------------------
@@ -123,9 +94,39 @@ string gSaveTreeName = "";
 //name of the (1st) folder that contains the results
 string gIdentifier = "";
 
+// position of the legend info
+float gXpos = 0.17;
+float gYpos = 0.85;
+
 // -----------------------------------------------------------------
 // all functions are defined here
 // -----------------------------------------------------------------
+
+// function for the re-weighting
+double func(double *x, double *par){
+  return par[0]*TMath::Sin(par[0]);
+}
+
+// to setup reco and gen trees
+Float_t fM;
+Float_t fPt;
+Float_t fRap;
+Float_t fPhi;
+Float_t fGenPhi;
+Float_t fPhiAv;
+
+void setupTree(TTree *t, string tp){
+  t->SetBranchAddress("fM",     &fM);
+  t->SetBranchAddress("fPt",    &fPt);
+  t->SetBranchAddress("fRap",   &fRap);
+  t->SetBranchAddress("fPhi",   &fPhi);
+  if(tp == "reco") t->SetBranchAddress("fGenPhi",&fGenPhi);
+  t->SetBranchAddress("fPhiAv", &fPhiAv);
+
+  // Note: in the reco tree fPhi is the reco value and fGenPhi the generated one
+  // in the gen tree fPhi is the gen value.
+  // Maybe change it (also for the other quantities)?
+}
 
 // -----------------------------------------------------------------
 // do one data fit
@@ -324,7 +325,7 @@ void doOneDataFit(TTree *dataTree, TFile *saveFile, float binID[3], TTree *recoT
   for (int i = 0; i < nPoints; ++i) {
     chi2Pull += pulls[i] * pulls[i];
   }
-  std::cout << "Computed chi2 from pulls: " << chi2Pull << std::endl;
+  cout << "Computed chi2 from pulls: " << chi2Pull << std::endl;
 
   // --> Draw residuals and pulls
   TCanvas *cStat = new TCanvas("cStat", "cStat", 800, 600);
@@ -491,7 +492,7 @@ void fitJPsiInPhiBins(string nClass = "noSelection", int nPhiBins = 1, const cha
     recoTree = (TTree*) recoFile->Get("DF_2336518085565631/dimu"); 
 
     dataTree = recoTree;
-    
+
     genFile = new TFile("../MonteCarlo/gen_tree.root");
     genTree = (TTree*) genFile->Get("DF_2336518085565631/dimu");
 
