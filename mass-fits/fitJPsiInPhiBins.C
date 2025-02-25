@@ -53,6 +53,7 @@ using namespace RooFit;
 // global variables, to be set to drive the fits
 // -----------------------------------------------------------------
 // --> kinematics: will be set to the values in a config
+// the values set here will not be taken into account if values are present in the config
 double minPt = 0;
 double maxPt = 0;
 double minMass = 0;
@@ -60,29 +61,33 @@ double maxMass = 0;
 double minRapidity = 0;
 double maxRapidity = 0;
 
-// --> Crystall ball
-double nParL = 0;
-double nParR = 0;
-double sigmaL = 0;
-double sigmaR = 0;
-double alphaL = 0;
-double alphaR = 0;
+// --> Crystall ball parameters
+double nParL = 10;
+double nParR = 10;
+double sigmaL = 0.08;
+double sigmaR = 0.07;
+double alphaL = 1.2;
+double alphaR = 2.5;
 
-// --> exponential
-double lambda = 0.0;
+// --> exponential for the bkg
+double lambda = 0.7;
 
-// Expo3 (as Nazar)
+// Expo3 (as Nazar) for the bkg
 // func = exp(p_1*m + p_2*m^2)
 double p_1 = -2.55;
 double p_2 = 0.2;
 
 // --> switches 
-bool isNFixed = false;
+// for the CristalBall
+bool isNFixed = true;
 bool isSigmaFixed = false;
-bool isAlphaFixed = false;
+bool isAlphaFixed = true;
 bool includePsi2s = true;
+// for the bkg using a simple exp
 bool isLambdaFixed = false;
+// chi2 fit: not used
 bool isChi2Fit = false;
+// to exclude j/psi, for fits outside the j/psi region
 bool excludeJPsi = false;
 
 // -----------------------------------------------------------------
@@ -465,7 +470,7 @@ void doOneDataFit(TTree *dataTree, TFile *saveFile, float binID[3], TTree *recoT
 
 // -----------------------------------------------------------------
 // entry point: set up and call fitting function
-void fitJPsiInPhiBins(string nClass = "noSelection", int nPhiBins = 1, const char *config = "jPsi", bool isMC = false, bool notShow = false)
+void fitJPsiInPhiBins(string nClass = "noSelection", int nPhiBins = 12, const char *config = "jPsi", bool isMC = false, bool notShow = true)
 {
   // choose to show or not the canvas
   if(notShow) gROOT->SetBatch(kTRUE);
@@ -543,26 +548,7 @@ void fitJPsiInPhiBins(string nClass = "noSelection", int nPhiBins = 1, const cha
   maxMass     = env->GetValue(keyMassUp.Data(), 0.0);
   minRapidity = env->GetValue(keyRapLow.Data(), 0.0);
   maxRapidity = env->GetValue(keyRaPUp.Data(), 0.0);
-  
 
-  // chose parameters for the fit
-  // --> crystal ball
-  sigmaL = 0.08;
-  sigmaR = 0.07;
-  alphaL = 1.2;
-  alphaR = 2.5;
-  nParL  = 10;
-  nParR  = 10;    
-  isSigmaFixed = false;
-  isAlphaFixed = true;
-  isNFixed     = true;
-  includePsi2s = true;
-  // --> exponential
-  lambda = 0.7;
-  isLambdaFixed = false;
-
-  // minimization
-  isChi2Fit = false;
 
 	// defining the ranges for phi
   float phiMin = -TMath::Pi();
