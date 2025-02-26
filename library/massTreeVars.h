@@ -14,9 +14,9 @@
   // entries
   float entries;
   float errEntries;
-  //AxE
-  float AxE;
-  float errAxE;
+  // AxECohJPsi
+  float AxECohJPsi;
+  float errAxECohJPsi;
   // corrected j/psi
   float numJPsiCorr;
   float errNumJPsiCorr;
@@ -37,10 +37,10 @@
     // background
     globalTree->SetBranchAddress("numBkg",&numBkg);
     globalTree->SetBranchAddress("errNumBkg",&errNumBkg);
-    // AxE
-    globalTree->SetBranchAddress("AxE",&AxE);
-    globalTree->SetBranchAddress("errAxE",&errAxE);
-    // j/psi corrected by AxE = j/psi /AxE
+    // AxECohJPsi
+    globalTree->SetBranchAddress("AxECohJPsi",&AxECohJPsi);
+    globalTree->SetBranchAddress("errAxECohJPsi",&errAxECohJPsi);
+    // j/psi corrected by AxE = j/psi /AxECohJPsi
     globalTree->SetBranchAddress("numJPsiCorr",&numJPsiCorr);
     globalTree->SetBranchAddress("errNumJPsiCorr",&errNumJPsiCorr);
 

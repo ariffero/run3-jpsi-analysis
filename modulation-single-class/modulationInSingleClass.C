@@ -36,14 +36,14 @@ using namespace std;
 // -----------------------------------------------------------------
 
 // vectors with the possible variables that can be plotted
-vector<string> possibleVar{"numJPsi", "numJPsiCorr", "entries", "numBkg", "AxE"};
-vector<string> possibleErrVar{"errNumJPsi", "errNumJPsiCorr", "errEntries", "errNumBkg", "errAxE"};
+vector<string> possibleVar{"numJPsi", "numJPsiCorr", "entries", "numBkg", "AxECohJPsi"};
+vector<string> possibleErrVar{"errNumJPsi", "errNumJPsiCorr", "errEntries", "errNumBkg", "errAxECohJPsi"};
 // the variable will be chosen using varID
 // 0 = # j/psi (not corrected for AxE)
 // 1 = # j/psi (AxE-corrected)
 // 2 = entries in the tree
 // 3 = # bkg (not corrected for AxE)
-// 4 = AxE
+// 4 = AxE for coh j/psi
 
 
 // do not show the pop up of the canvas

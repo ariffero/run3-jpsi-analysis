@@ -14,9 +14,9 @@
   // entries
   float entries;
   float errEntries;
-  //AxE
-  float AxE;
-  float errAxE;
+  // AxECohJPsi = AxE for coh j/psi process
+  float AxECohJPsi;
+  float errAxECohJPsi;
   // corrected j/psi
   float numJPsiCorr;
   float errNumJPsiCorr;
@@ -35,10 +35,10 @@
     // background
     saveFitTree->Branch("numBkg",&numBkg,"numBkg/F");
     saveFitTree->Branch("errNumBkg",&errNumBkg,"errNumBkg/F");
-    // AxE
-    saveFitTree->Branch("AxE",&AxE,"AxE/F");
-    saveFitTree->Branch("errAxE",&errAxE,"errAxE/F");
-    // j/psi corrected by AxE = j/psi /AxE
+    // AxECohJPsi
+    saveFitTree->Branch("AxECohJPsi",&AxECohJPsi,"AxECohJPsi/F");
+    saveFitTree->Branch("errAxECohJPsi",&errAxECohJPsi,"errAxECohJPsi/F");
+    // j/psi corrected by AxECohJPsi = j/psi /AxECohJPsi
     saveFitTree->Branch("numJPsiCorr",&numJPsiCorr,"numJPsiCorr/F");
     saveFitTree->Branch("errNumJPsiCorr",&errNumJPsiCorr,"errNumJPsiCorr/F");
 
