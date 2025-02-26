@@ -1,24 +1,23 @@
-#include <Riostream.h>
-#include <filesystem>
+//
+// it fits the phi distribution of data and saves a normalized function with the correct shape
+// the shape (varying the amplitudes) will be used to re-weight the MC such that the phi distrib.
+// reproduces the one in data
+//
+
+// C++ headers
+#include <iostream>
+#include <string>
+
+// ROOT headers
 #include "TFile.h"
 #include "TTree.h"
-#include "TBranch.h"
-#include "TLatex.h"
 #include "TH1D.h"
-#include "TH2D.h"
 #include "TCanvas.h"
-#include "TStopwatch.h"
 #include "TMath.h"
 #include "TF1.h"
 #include "TStyle.h"
-#include "TLegend.h"
-#include "TPaletteAxis.h"
-#include "TSystem.h"
-#include "TDatabasePDG.h"
-#include <string>
-#include "TDirectory.h"
-#include "TROOT.h"
-#include "TLorentzVector.h"
+
+// Custom headers: used to read the trees
 #include "../library/dimuVarsCommon.h"
 
 //global values: kine cuts
@@ -28,7 +27,6 @@ float lowMass = 2.2;
 float upMass = 4.0;
 float lowRap = -4;
 float upRap = -2.5;
-
 
 // fit function
 double func(double *x, double *par){
@@ -42,7 +40,7 @@ double pcFunc(double *x, double *par){
 }
 
 
-
+// --------------------------
 // entry point
 void fitPhi(int reg = 3, bool applyKine = true){
 
@@ -79,6 +77,7 @@ void fitPhi(int reg = 3, bool applyKine = true){
     hPhi->Fill(fPhi);
   }
 
+  // define the fit function, 3 ranges are provide to study the correct one
   TF1 *fitFunc = NULL;
   if(reg==1) fitFunc = new TF1("fitFunc",func,-TMath::Pi(),0,2);
   if(reg==2) fitFunc = new TF1("fitFunc",func,0,TMath::Pi(),2);
@@ -93,6 +92,7 @@ void fitPhi(int reg = 3, bool applyKine = true){
   TCanvas *c = new TCanvas();
   hPhi->Draw("ep");
 
+  // save the result
   TFile *saveFile = new TFile("rewFunc.root","recreate");
   // normalize the function, computing the normalization by hand
   double norm = 2*TMath::Pi() + 2*(fitFunc->GetParameter(2) - fitFunc->GetParameter(1));
