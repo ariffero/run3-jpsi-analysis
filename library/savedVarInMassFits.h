@@ -20,8 +20,13 @@
   // corrected j/psi
   float numJPsiCorr;
   float errNumJPsiCorr;
-
-  // ->mean pt and phi of the bin
+  // AxEMumuMid
+  float AxEMumuMid;
+  float errAxEMumuMid;
+  // corrected background
+  float numBkgCorr;
+  float errNumBkgCorr;
+  // mean pt and phi of the bin
   float meanPt;
   float meanPhiAverage;
 
@@ -41,6 +46,12 @@
     // j/psi corrected by AxECohJPsi = j/psi /AxECohJPsi
     saveFitTree->Branch("numJPsiCorr",&numJPsiCorr,"numJPsiCorr/F");
     saveFitTree->Branch("errNumJPsiCorr",&errNumJPsiCorr,"errNumJPsiCorr/F");
+    // AxEMumuMid
+    saveFitTree->Branch("AxEMumuMid",&AxEMumuMid,"AxEMumuMid/F");
+    saveFitTree->Branch("errAxEMumuMid",&errAxEMumuMid,"errAxEMumuMid/F");
+    // background corrected by AxE = bkg / AxEMumuMid
+    saveFitTree->Branch("numBkgCorr",&numBkgCorr,"numBkgCorr/F");
+    saveFitTree->Branch("errNumBkgCorr",&errNumBkgCorr,"errNumBkgCorr/F");
 
     // entries
     saveFitTree->Branch("entries",&entries,"entries/F");

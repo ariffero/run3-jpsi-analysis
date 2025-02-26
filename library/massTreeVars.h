@@ -8,7 +8,7 @@
   // j/psi
   float numJPsi;
   float errNumJPsi;
-  //background
+  // background
   float numBkg;
   float errNumBkg;
   // entries
@@ -20,8 +20,13 @@
   // corrected j/psi
   float numJPsiCorr;
   float errNumJPsiCorr;
-
-  // ->mean pt and phi of the bin
+  // AxEMumuMid
+  float AxEMumuMid;
+  float errAxEMumuMid;
+  // corrected background
+  float numBkgCorr;
+  float errNumBkgCorr;
+  // mean pt and phi of the bin
   float meanPt;
   float meanPhiAverage;
 
@@ -43,6 +48,12 @@
     // j/psi corrected by AxE = j/psi /AxECohJPsi
     globalTree->SetBranchAddress("numJPsiCorr",&numJPsiCorr);
     globalTree->SetBranchAddress("errNumJPsiCorr",&errNumJPsiCorr);
+    // AxEMumuMid
+    globalTree->SetBranchAddress("AxEMumuMid",&AxEMumuMid);
+    globalTree->SetBranchAddress("errAxEMumuMid",&errAxEMumuMid);
+    // background corrected by AxE = bkg / AxEMumuMid
+    globalTree->SetBranchAddress("numBkgCorr",&numBkgCorr);
+    globalTree->SetBranchAddress("errNumBkgCorr",&errNumBkgCorr);
 
     // entries
     globalTree->SetBranchAddress("entries",&entries);

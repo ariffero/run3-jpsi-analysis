@@ -144,8 +144,31 @@ void setupTree(TTree *t, string tp){
 }
 
 // -----------------------------------------------------------------
+// function used to fill the histos of the MC, applying the correct kinematic cuts
+void fillMCHisto(TH1D *h, TTree *tree, string mcType, TF1 *gRewFuc, float binID[3]){
+  if(mcType!="gen" && mcType!="reco"){
+    cout<<"MC type is not acceptable. Bye!"<<endl;
+    return;
+  }
+  setupTree(tree, mcType);
+  for(Long64_t ev=0; ev<tree->GetEntries(); ev++){
+    tree->GetEntry(ev);
+    // apply kine
+    if(fM < minMass || fM > maxMass) continue;
+    if(fPt < minPt || fPt > maxPt) continue;
+    if(fRap < minRapidity || fRap > maxRapidity) continue;
+    if(fPhiAv < binID[1] || fPhiAv > binID[2]) continue;
+    // fill the histo with the weights
+    if(mcType=="reco") h->Fill(fM, gRewFuc->Eval(fGenPhi));
+    else if(mcType=="gen")  h->Fill(fM, gRewFuc->Eval(fPhi));
+  }
+}
+
+// -----------------------------------------------------------------
 // do one data fit
-void doOneDataFit(TTree *dataTree, TFile *saveFile, float binID[3], TTree *recoCohJPsiTree, TTree *genCohJPsiTree)
+void doOneDataFit(TTree *dataTree, TFile *saveFile, float binID[3], 
+                  TTree *recoCohJPsiTree, TTree *genCohJPsiTree, 
+                  TTree *recoMumuMidTree, TTree *genMumuMidTree)
 {
   // number of times the function has been called
   static int nCalls = 0;
@@ -188,7 +211,7 @@ void doOneDataFit(TTree *dataTree, TFile *saveFile, float binID[3], TTree *recoC
   TFile *funcFile = new TFile("../rew-phi/rew-func-correct.root");
   TF1* gRewFuc = (TF1*)funcFile->Get("gRewFuc");
   
-  // decalre the histos for reco, gen and AxE (for coh J/psi)
+  // declare the histos for reco, gen and AxE (for coh J/psi)
   int binsAxE = 1;
   TH1D *hRecoCohJpsi = new TH1D("hRecoCohJpsi","hRecoCohJpsi",binsAxE, minMass, maxMass);
   hRecoCohJpsi->GetXaxis()->SetTitle("m_{#mu#mu} (GeV/#it{c}^{2})");
@@ -197,43 +220,39 @@ void doOneDataFit(TTree *dataTree, TFile *saveFile, float binID[3], TTree *recoC
   TH1D *hAxECohJPsi = (TH1D*)hRecoCohJpsi->Clone("hAxECohJPsi");
   hAxECohJPsi->SetTitle("Acc#times#epsilon (coh J/#psi)");
 
+  // declare the histos for reco, gen and AxE (for coh J/psi)
+  TH1D *hRecoMumuMid = (TH1D*)hRecoCohJpsi->Clone("hRecoMumuMid");
+  hRecoMumuMid->SetTitle("hRecoMumuMid");
+  TH1D *hGenMumuMid = (TH1D*)hGenCohJpsi->Clone("hGenMumuMid");
+  hGenMumuMid->SetTitle("hGenMumuMid");
+  TH1D *hAxEMumuMid = (TH1D*)hRecoCohJpsi->Clone("hAxEMumuMid");
+  hAxEMumuMid->SetTitle("Acc#times#epsilon (#gamma#gamma#rightarrow#mu#mu)");
+
   // fill the histos
-  // reco MC
-  setupTree(recoCohJPsiTree, "reco");
-  for(Long64_t ev=0; ev<recoCohJPsiTree->GetEntries(); ev++){
-    recoCohJPsiTree->GetEntry(ev);
-    // apply kine
-    if(fM < minMass || fM > maxMass) continue;
-    if(fPt < minPt || fPt > maxPt) continue;
-    if(fRap < minRapidity || fRap > maxRapidity) continue;
-    if(fPhiAv < binID[1] || fPhiAv > binID[2]) continue;
-    // fill the histo with the weights
-    hRecoCohJpsi->Fill(fM, gRewFuc->Eval(fGenPhi));
-  }
+  // reco MC j/psi coh
+  fillMCHisto(hRecoCohJpsi, recoCohJPsiTree, "reco", gRewFuc, binID);
   // check that the kine is applied correctly on the reco tree
   RooDataSet recoCohJPsiData("recoCohJPsiData", "recoCohJPsiData", RooArgSet(pt, mass, phiAverage, rapidity), Import(*recoCohJPsiTree));
-  cout<<"check: "<<hRecoCohJpsi->GetEntries()<<"\t"<<recoCohJPsiData.numEntries()<<endl;
-
-  // gen MC
-  setupTree(genCohJPsiTree, "gen");
-  for(Long64_t ev=0; ev<genCohJPsiTree->GetEntries(); ev++){
-    genCohJPsiTree->GetEntry(ev);
-    // apply kine
-    if(fM < minMass || fM > maxMass) continue;
-    if(fPt < minPt || fPt > maxPt) continue;
-    if(fRap < minRapidity || fRap > maxRapidity) continue;
-    if(fPhiAv < binID[1] || fPhiAv > binID[2]) continue;
-    // fill the histo with the weights
-    hGenCohJpsi->Fill(fM, gRewFuc->Eval(fPhi));
-  }
-  cout<<"gen: "<<hGenCohJpsi->GetEntries()<<endl;
-
+  cout<<"sanity check: "<<hRecoCohJpsi->GetEntries()<<"\t"<<recoCohJPsiData.numEntries()<<endl;
+  // gen MC j/psi coh
+  fillMCHisto(hGenCohJpsi, genCohJPsiTree, "gen", gRewFuc, binID);
   // fill the histo of the AxECohJPsi
   hAxECohJPsi->Divide(hRecoCohJpsi,hGenCohJpsi,1,1,"B");
 
   // compute the AxECohJPsi (def in savedVarInMassFits.h header)
   AxECohJPsi = hAxECohJPsi->GetBinContent(1);
   errAxECohJPsi = hAxECohJPsi->GetBinError(1);
+
+  // reco MC yy->mumu mid
+  fillMCHisto(hRecoMumuMid, recoMumuMidTree, "reco", gRewFuc, binID);
+  // gen MC yy->mumu mid
+  fillMCHisto(hGenMumuMid, genMumuMidTree, "gen", gRewFuc, binID);
+  // fill the histo of the AxECohJPsi
+  hAxEMumuMid->Divide(hRecoMumuMid,hGenMumuMid,1,1,"B");
+
+  // compute the AxECohJPsi (def in savedVarInMassFits.h header)
+  AxEMumuMid = hAxEMumuMid->GetBinContent(1);
+  errAxEMumuMid = hAxEMumuMid->GetBinError(1);
 
   // check the AxECohJPsi 
   // remove the comment to have the plots
@@ -480,8 +499,11 @@ void doOneDataFit(TTree *dataTree, TFile *saveFile, float binID[3], TTree *recoC
   entries = inData.numEntries();
   errEntries = TMath::Sqrt(entries);
   numJPsiCorr = numJPsi/AxECohJPsi;
-  // compute the error on the corrected numer of j/psi propagaing the errors from the fit and from the AxECohJPsi
+  numBkgCorr = numBkg/AxEMumuMid;
+  // compute the error on the corrected numer of j/psi propagating the errors from the fit and from the AxECohJPsi
   errNumJPsiCorr = TMath::Sqrt((errNumJPsi/AxECohJPsi)*(errNumJPsi/AxECohJPsi) + (numJPsi/(AxECohJPsi*AxECohJPsi)*errAxECohJPsi)*(numJPsi/(AxECohJPsi*AxECohJPsi)*errAxECohJPsi));
+  // compute the error on the corrected bkg propagating the errors from the fit and from the AxECohJPsi
+  errNumBkgCorr = TMath::Sqrt((errNumBkg/AxEMumuMid)*(errNumBkg/AxEMumuMid) + (numBkg/(AxEMumuMid*AxEMumuMid)*errAxEMumuMid)*(numBkg/(AxEMumuMid*AxEMumuMid)*errAxEMumuMid));
 
   meanPhiAverage = (binID[1] + binID[2])/2;
   saveFitTree->Fill();
@@ -519,31 +541,38 @@ void fitJPsiInPhiBins(string nClass = "noSelection", int nPhiBins = 12, const ch
   TFile *genCohJPsiFile = NULL;
   TTree *genCohJPsiTree = NULL;
 
+  // get the trees with the reco MC of yy to mumu in the j/psi mass region
+  TFile *recoMumuMidFile = NULL;
+  TTree *recoMumuMidTree = NULL;
+
+  // get the trees with the reco MC of yy to mumu in the j/psi mass region
+  TFile *genMumuMidFile = NULL;
+  TTree *genMumuMidTree = NULL;
+
+  recoCohJPsiFile = new TFile("../MonteCarlo/reco_tree.root");
+  recoCohJPsiTree = (TTree*) recoCohJPsiFile->Get("DF_2336518085565631/dimu"); 
+  
+  genCohJPsiFile = new TFile("../MonteCarlo/gen_tree.root");
+  genCohJPsiTree = (TTree*) genCohJPsiFile->Get("DF_2336518085565631/dimu"); 
+
+  recoMumuMidFile = new TFile("../MonteCarloMumuMid/reco_tree.root");
+  recoMumuMidTree = (TTree*) recoMumuMidFile->Get("DF_2336518081075359/dimu");
+
+  genMumuMidFile = new TFile("../MonteCarloMumuMid/gen_tree.root");
+  genMumuMidTree = (TTree*) genMumuMidFile->Get("DF_2336518081075359/dimu");
+
   if(!isMC){
     dataFile = new TFile("../Data/merged-data.root");
     dataTree = (TTree*) dataFile->Get("DF_2336518079279520/O2dimu");
-
-    recoCohJPsiFile = new TFile("../MonteCarlo/reco_tree.root");
-    recoCohJPsiTree = (TTree*) recoCohJPsiFile->Get("DF_2336518085565631/dimu"); 
-
-    genCohJPsiFile = new TFile("../MonteCarlo/gen_tree.root");
-    genCohJPsiTree = (TTree*) genCohJPsiFile->Get("DF_2336518085565631/dimu"); 
   }
   else if(isMC){
-
-    recoCohJPsiFile = new TFile("../MonteCarlo/reco_tree.root");
-    recoCohJPsiTree = (TTree*) recoCohJPsiFile->Get("DF_2336518085565631/dimu"); 
-
     dataTree = recoCohJPsiTree;
-
-    genCohJPsiFile = new TFile("../MonteCarlo/gen_tree.root");
-    genCohJPsiTree = (TTree*) genCohJPsiFile->Get("DF_2336518085565631/dimu");
-
     gNeutronClass = "noSelection";
   }
   
   // check if the data are there
-  if(dataTree==NULL || recoCohJPsiTree==NULL || genCohJPsiTree==NULL){
+  if(dataTree==NULL || recoCohJPsiTree==NULL || genCohJPsiTree==NULL || 
+     recoMumuMidTree==NULL || genMumuMidTree==NULL){
     cout<<"At least one file is missing. Bye!"<<endl;
     return;
   }
@@ -606,7 +635,7 @@ void fitJPsiInPhiBins(string nClass = "noSelection", int nPhiBins = 12, const ch
 		cout<<"max == "<<binID[2]<<endl;
 
 		// do the fit
-  	doOneDataFit(dataTree, saveFile, binID, recoCohJPsiTree, genCohJPsiTree);
+  	doOneDataFit(dataTree, saveFile, binID, recoCohJPsiTree, genCohJPsiTree, recoMumuMidTree, genCohJPsiTree);
 
 		actualPhiMin = actualPhiMin + incrementPhi;
     actualPhiMax = actualPhiMax + incrementPhi;
