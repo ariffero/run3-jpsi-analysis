@@ -24,8 +24,8 @@
 //global values: kine cuts
 float lowPt = 0;
 float upPt = 0.2;
-float lowMass = 2.9;
-float upMass = 3.3;
+float lowMass = 2.2;
+float upMass = 4.0;
 float lowRap = -4;
 float upRap = -2.5;
 
@@ -44,7 +44,7 @@ double pcFunc(double *x, double *par){
 
 
 // entry point
-void fitPhi(int reg = 1, bool applyKine = true){
+void fitPhi(int reg = 3, bool applyKine = true){
 
   string filePath = "";
   string treePath = "";
@@ -94,6 +94,11 @@ void fitPhi(int reg = 1, bool applyKine = true){
   hPhi->Draw("ep");
 
   TFile *saveFile = new TFile("rewFunc.root","recreate");
+  // normalize the function, computing the normalization by hand
+  double norm = 2*TMath::Pi() + 2*(fitFunc->GetParameter(2) - fitFunc->GetParameter(1));
+  fitFunc->SetParameter(0,1/norm);
+  // check that the function is correctly normalized
+  cout<<"integral: "<<fitFunc->Integral(-TMath::Pi(),TMath::Pi())<<endl;
   fitFunc->Write();
   saveFile->Close();
 }
