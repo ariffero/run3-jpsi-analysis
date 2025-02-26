@@ -27,6 +27,8 @@
 #include "TSystem.h"
 #include "TEnv.h"
 #include "TF1.h"
+#include "TDatabasePDG.h"
+#include "TParticlePDG.h"
 
 // RooFit headers
 #include "RooGlobalFunc.h"
@@ -82,7 +84,9 @@ double p_2 = 0.2;
 bool isNFixed = true;
 bool isSigmaFixed = false;
 bool isAlphaFixed = true;
-bool includePsi2s = true;
+bool includePsi2s = false;
+bool isMassFixed = true;
+
 // for the bkg using a simple exp
 bool isLambdaFixed = false;
 // chi2 fit: not used
@@ -247,7 +251,16 @@ void doOneDataFit(TTree *dataTree, TFile *saveFile, float binID[3], TTree *recoC
 
   // build pdfs
   // --> j/psi
-  RooRealVar m0("m0", "m0", 3.0967,2.9,3.2);
+
+  // Get the PDG database instance
+  TDatabasePDG *pdgDB = TDatabasePDG::Instance();
+  // Retrieve the J/psi particle using its PDG code 443
+  TParticlePDG *jpsiPart = pdgDB->GetParticle(443);
+
+  RooRealVar m0("m0", "m0", jpsiPart->Mass(), 2.9, 3.2);
+  if(isMassFixed){
+    m0.setConstant(true);
+  }
   RooRealVar sL("sigmaL", "sigmaL",sigmaL,0.01,0.2);
   RooRealVar sR("sigmaR", "sigmaR",sigmaR,0.01,0.2);
   if (isSigmaFixed) {
@@ -287,8 +300,8 @@ void doOneDataFit(TTree *dataTree, TFile *saveFile, float binID[3], TTree *recoC
   // --> non-resonant bkg, as Nazar
   // Define parameters p1, p2
   // bkg = exp(p1*mass + p2*mass^2)
-  RooRealVar p1("p1", "p1", p_1, -3, 0.0);
-  RooRealVar p2("p2", "p2", p_2, -0.5, 0.5);
+  RooRealVar p1("p1", "p1", p_1, -100, 0.0);
+  RooRealVar p2("p2", "p2", p_2, -5, 5);
   RooGenericPdf nrBg("nrBg", "nrBg", "exp(@1*@0 + @2*@0*@0)", RooArgList(mass, p1, p2));
 
   // model and fit
