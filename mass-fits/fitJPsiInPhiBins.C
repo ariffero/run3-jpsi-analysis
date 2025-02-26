@@ -29,6 +29,7 @@
 #include "TF1.h"
 #include "TDatabasePDG.h"
 #include "TParticlePDG.h"
+#include "TLine.h"
 
 // RooFit headers
 #include "RooGlobalFunc.h"
@@ -388,14 +389,16 @@ void doOneDataFit(TTree *dataTree, TFile *saveFile, float binID[3], TTree *recoC
   TCanvas *c = new TCanvas(Form("m_{#mu#mu} mass distr. - %s - #phi %d", gNeutronClass.c_str(), (int)binID[0]),
                            Form("m_{#mu#mu} mass distr. - %s - #phi %d", gNeutronClass.c_str(), (int)binID[0]),1920,1080);
 
-  // Create two pads: pad1 for the fit and pad2
-  TPad *pad1 = new TPad("pad1", "Fit Pad", 0.0, 0.25, 1.0, 1.0);
-  TPad *pad2 = new TPad("pad2", "Pulls Pad", 0.0, 0.05, 1.0, 0.28);
+  // Create 3 pads: pad1 for the fit, pad2 for the pulls, and pad3 for the correlation matrix
+  TPad *pad1 = new TPad("pad1", "Fit Pad",   0.0, 0.25, 0.7, 1.0);
+  TPad *pad2 = new TPad("pad2", "Pulls Pad", 0.0, 0.05, 0.7, 0.28);
+  TPad *pad3 = new TPad("pad3", "Corr matrix Pad", 0.65, 0.0, 1.0, 1.0);
 
   // Draw the pads on the canvas
   c->cd();
   pad1->Draw();
   pad2->Draw();
+  pad3->Draw();
 
   // Draw fit result on pad1
   pad1->cd();
@@ -434,15 +437,23 @@ void doOneDataFit(TTree *dataTree, TFile *saveFile, float binID[3], TTree *recoC
   pullHist->GetXaxis()->SetLabelOffset(0.01);
 
   pullHist->Draw();
+  TLine *topFit = new TLine(minMass,1,maxMass,1);
+  topFit->SetLineColor(kGreen+2);
+  topFit->SetLineStyle(3);
+  topFit->Draw("same");
+  pullHist->Draw("same");
+
   pad2->Update();
 
-  // --> correlation matrix
-  TCanvas *cCM = new TCanvas(Form("CM pt in (%.2f,%.2f) - #phi %d",minPt,maxPt,(int)binID[0]),
-			     Form("CM pt in (%.2f,%.2f) - #phi %d",minPt,maxPt,(int)binID[0]),
-			     200,100,900, 600);
-  TH2* h_CorrM = r->correlationHist();
-  h_CorrM->SetMarkerSize(1.2);
-  h_CorrM->Draw("zcol,text");
+  // obtain and draw the correlation matrix
+  pad3->cd();
+  TH2* hCorrMatrix = r->correlationHist();
+  hCorrMatrix->SetName(Form("hCorrMatrix%d",nCalls));
+  hCorrMatrix->SetTitle("Correlation matrix");
+  hCorrMatrix->SetMarkerSize(1.2);
+  hCorrMatrix->Draw("col,text");
+  hCorrMatrix->SetStats(0);
+  pad3->Update();
 
   // --> print some values
   cout << " chi2/ndf = " << chi2_red << endl;
