@@ -36,14 +36,16 @@ using namespace std;
 // -----------------------------------------------------------------
 
 // vectors with the possible variables that can be plotted
-vector<string> possibleVar{"numJPsi", "numJPsiCorr", "entries", "numBkg", "AxECohJPsi"};
-vector<string> possibleErrVar{"errNumJPsi", "errNumJPsiCorr", "errEntries", "errNumBkg", "errAxECohJPsi"};
+vector<string> possibleVar{"numJPsi", "numJPsiCorr", "entries", "numBkg", "AxECohJPsi", "AxEMumuMid", "numBkgCorr"};
+vector<string> possibleErrVar{"errNumJPsi", "errNumJPsiCorr", "errEntries", "errNumBkg", "errAxECohJPsi", "errAxEMumuMid", "errNumBkgCorr"};
 // the variable will be chosen using varID
 // 0 = # j/psi (not corrected for AxE)
 // 1 = # j/psi (AxE-corrected)
 // 2 = entries in the tree
 // 3 = # bkg (not corrected for AxE)
 // 4 = AxE for coh j/psi
+// 5 = AxE for continuum mumu in j/psi region
+// 6 = # bkg (AxE-corrected)
 
 
 // do not show the pop up of the canvas
@@ -185,8 +187,8 @@ void onePhiFit(int event, int varID){
     return;
   }
 
-  // normalize the histo
-  if(varID!=4) normY1(hVar, gPhiBins); // do not normalize for the AxE
+  // normalize the histo if the variable is not an AxE
+  if(varID!=4 && varID!=5) normY1(hVar, gPhiBins); // do not normalize for the AxE
 
   // check the normalization
   hVar->DrawClone("ep");
