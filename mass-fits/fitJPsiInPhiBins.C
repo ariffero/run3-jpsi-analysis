@@ -46,6 +46,7 @@
 #include "RooCrystalBall.h"
 #include "RooFormulaVar.h"
 #include "RooHist.h"
+#include "RooMsgService.h"
 
 using namespace RooFit;
 
@@ -72,9 +73,6 @@ double sigmaR = 0.07;
 double alphaL = 1.2;
 double alphaR = 2.5;
 
-// --> exponential for the bkg
-double lambda = 0.7;
-
 // Expo3 (as Nazar) for the bkg
 // func = exp(p_1*m + p_2*m^2)
 double p_1 = -2.55;
@@ -88,8 +86,8 @@ bool isAlphaFixed = true;
 bool includePsi2s = false;
 bool isMassFixed = true;
 
-// for the bkg using a simple exp
-bool isLambdaFixed = false;
+// for the bkg: if true p_2=0 -> bkg = exp(p_1*m)
+bool useExpoBkg = true;
 // chi2 fit: not used
 bool isChi2Fit = false;
 // to exclude j/psi, for fits outside the j/psi region
@@ -110,7 +108,7 @@ string gSaveTreeName = "";
 string gIdentifier = "";
 
 // position of the legend info
-float gXpos = 0.17;
+float gXpos = 0.13;
 float gYpos = 0.85;
 
 // -----------------------------------------------------------------
@@ -205,7 +203,7 @@ void doOneDataFit(TTree *dataTree, TFile *saveFile, float binID[3],
   // number of events
   int nEvents = inData.numEntries();
   // check the structure of the data
-  inData.Print();
+  //inData.Print();
 
   // get the function to rew the MC
   TFile *funcFile = new TFile("../rew-phi/rew-func-correct.root");
@@ -312,16 +310,15 @@ void doOneDataFit(TTree *dataTree, TFile *saveFile, float binID[3],
   RooFormulaVar aR2("aR2","@0",RooArgList(aR));
   RooCrystalBall psi2s("psi2s", "psi2s", mass, m02, sL2, sR2, aL2, nL2, aR2, nR2);
 
-  // --> non-resonant background: 
-  // bkg = exp(-lamba*mass)
-  //RooRealVar b("#lambda","exponent",-lambda,-3,-0.2);
-  //RooExponential nrBg("nrBg","nrBg",mass,b);
-
   // --> non-resonant bkg, as Nazar
   // Define parameters p1, p2
   // bkg = exp(p1*mass + p2*mass^2)
   RooRealVar p1("p1", "p1", p_1, -100, 0.0);
   RooRealVar p2("p2", "p2", p_2, -5, 5);
+  if(useExpoBkg){
+    p2.setVal(0);
+    p2.setConstant(kTRUE);
+  }
   RooGenericPdf nrBg("nrBg", "nrBg", "exp(@1*@0 + @2*@0*@0)", RooArgList(mass, p1, p2));
 
   // model and fit
@@ -518,8 +515,11 @@ void doOneDataFit(TTree *dataTree, TFile *saveFile, float binID[3],
 // entry point: set up and call fitting function
 void fitJPsiInPhiBins(string nClass = "noSelection", int nPhiBins = 12, const char *config = "jPsi", bool isMC = false, bool notShow = true)
 {
-  // choose to show or not the canvas
-  if(notShow) gROOT->SetBatch(kTRUE);
+  // choose to show or not the canvas and info from RooFit
+  if(notShow){
+    gROOT->SetBatch(kTRUE);
+    RooMsgService::instance().setGlobalKillBelow(RooFit::WARNING);
+  } 
 
   // set the global values to the values in input
   // identifier = name of the config, it identifies the kine for a certain process
