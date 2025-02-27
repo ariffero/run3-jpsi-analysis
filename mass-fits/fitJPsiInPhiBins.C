@@ -191,7 +191,7 @@ void doOneDataFit(TTree *dataTree, TFile *saveFile, float binID[3],
     neutronID = new RooRealVar("fNclass","znClass",1,1);
   }
   else if(gNeutronClass=="Xn0n"){
-    neutronID = new RooRealVar("fNclass","znClass",2,3);
+    neutronID = new RooRealVar("fNclass","znClass",2,2);
   }
   else if(gNeutronClass=="XnXn"){
     neutronID = new RooRealVar("fNclass","znClass",4,4);
