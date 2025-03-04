@@ -17,6 +17,7 @@
 #include "TMath.h"
 #include "TStyle.h"
 #include "TLorentzVector.h"
+#include "TRandom3.h"
 
 // my headers
 #include "../library/dimuVarsCommon.h"
@@ -50,6 +51,14 @@ void angularResolution(string var = "phi"){
   hPosNegCorr->GetXaxis()->SetTitle("#varphi_{trk pos, gen} - #varphi_{trk pos, reco}");
   hPosNegCorr->GetYaxis()->SetTitle("#varphi_{trk neg, gen} - #varphi_{trk neg, reco}");
 
+  // histo for resultion vs pT
+  TH2D *hResVsPt = new TH2D("hResVsPt","hResVsPt",500,-TMath::Pi(),TMath::Pi(),500,0,5);
+  hResVsPt->GetXaxis()->SetTitle("#phi_{gen} - #phi_{reco}");
+  hResVsPt->GetYaxis()->SetTitle("reco #it{p}_{T} (GeV/#it{c})");
+  // vs gen pT
+  TH2D *hResVsPt2 = (TH2D*)hResVsPt->Clone("hResVsPt");
+  hResVsPt2->GetYaxis()->SetTitle("gen #it{p}_{T} (GeV/#it{c})");
+
   double sum = 1;
   double dif = 1;
   double res = 1;
@@ -61,10 +70,12 @@ void angularResolution(string var = "phi"){
   // define TLorentzVectors
   TLorentzVector vGen;
   TLorentzVector vGenDiff;
+  TLorentzVector vGenDiffOpp;
   TLorentzVector vGenP;
   TLorentzVector vGenN;
   TLorentzVector vRec;
   TLorentzVector vRecDiff;
+  TLorentzVector vRecDiffOpp;
   TLorentzVector vRecP;
   TLorentzVector vRecN;
 
@@ -125,21 +136,34 @@ void angularResolution(string var = "phi"){
     // phi average
     else if(var=="phiAv"){
       sum = 1;
-      dif = fGenPhiAv - fPhiAv;
+      double genPhiAv;
+      double phiAv;
+      if(gRandom->Rndm()>0.5){
+        genPhiAv = vGen.DeltaPhi(vGenDiff);
+        phiAv = vRec.DeltaPhi(vRecDiff);
+      }
+      else{
+        genPhiAv = vGen.DeltaPhi(vGenDiffOpp);
+        phiAv = vRec.DeltaPhi(vRecDiffOpp);
+      }
+      dif = genPhiAv - phiAv;
       hResolution->GetXaxis()->SetTitle("#phi_{average, gen} - #phi_{average reco}");
       hResolution->SetTitle("Resolution of #phi_{average}");
     }
     // phi charge
     else if(var=="phiCh"){
       sum = 1;
-      dif = fGenPhiCh - fPhiCh;
+      double genPhiCh = vGen.DeltaPhi(vGenDiff);
+      dif = genPhiCh - fPhiCh;
       hResolution->GetXaxis()->SetTitle("#phi_{charge, gen} - #phi_{charge reco}");
       hResolution->SetTitle("Resolution of #phi_{charge}");
     }
 
-    // fill the histo
+    // fill the histos
     res = (dif/sum);
     hResolution->Fill(res);
+    hResVsPt->Fill(res,fPt);
+    hResVsPt2->Fill(res,fGenPt);
   }  
 
   // draw the plot with the resolution
@@ -160,4 +184,11 @@ void angularResolution(string var = "phi"){
     TCanvas *c2 = new TCanvas("c2","c2",1920,1080);
     hCorrelation->Draw("colz");
   }
+
+  // draw the resolution of phi vs pT if requested
+  if(var=="phiJpsi"){
+    TCanvas *cPt = new TCanvas("cPt","cPt");
+    hResVsPt->Draw("colz");  
+  }
+
 }
