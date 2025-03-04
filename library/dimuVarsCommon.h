@@ -47,8 +47,6 @@
   Float_t         fGenPt;
   Float_t         fGenRap;
   Float_t         fGenPhi;
-  Float_t         fGenPhiAv;
-  Float_t         fGenPhiCh;
   Float_t         fGenPtp;
   Float_t         fGenEtap;
   Float_t         fGenPhip;
