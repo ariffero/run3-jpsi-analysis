@@ -66,12 +66,12 @@ double minRapidity = 0;
 double maxRapidity = 0;
 
 // --> Crystall ball parameters
-double nParL = 10;
-double nParR = 10;
-double sigmaL = 0.08;
-double sigmaR = 0.07;
-double alphaL = 1.2;
-double alphaR = 2.5;
+double nParL = 14.5; // 10
+double nParR = 2.8; // 10
+double sigmaL = 0.073;
+double sigmaR = 0.061;
+double alphaL = 1.3; // 1.2
+double alphaR = 3.4; // 2.5
 
 // Expo3 (as Nazar) for the bkg
 // func = exp(p_1*m + p_2*m^2)
@@ -80,11 +80,11 @@ double p_2 = 0.2;
 
 // --> switches 
 // for the CristalBall
-bool isNFixed = true;
+bool isNFixed = false;
 bool isSigmaFixed = false;
-bool isAlphaFixed = true;
+bool isAlphaFixed = false;
 bool includePsi2s = false;
-bool isMassFixed = true;
+bool isMassFixed = false;
 
 // for the bkg: if true p_2=0 -> bkg = exp(p_1*m)
 bool useExpoBkg = true;
@@ -92,6 +92,10 @@ bool useExpoBkg = true;
 bool isChi2Fit = false;
 // to exclude j/psi, for fits outside the j/psi region
 bool excludeJPsi = false;
+// to exclude the continuum
+bool excludeBkg = true;
+// fit data or reco MC
+bool gIsMC = false;
 
 // -----------------------------------------------------------------
 // global variables useful in the macro
@@ -199,7 +203,15 @@ void doOneDataFit(TTree *dataTree, TFile *saveFile, float binID[3],
 
 
   // import the tree of the data
-  RooDataSet inData("inData", "inData", RooArgSet(*neutronID, pt, mass, phiAverage, rapidity), Import(*dataTree));
+  // define the variables to put in inData
+  RooArgSet *vars = NULL;
+  // for real data:
+  if(!gIsMC) vars =  new RooArgSet(*neutronID, pt, mass, phiAverage, rapidity);
+  // for reco MC
+  else if(gIsMC) vars =  new RooArgSet(pt, mass, phiAverage, rapidity);
+  // create the dataset
+  RooDataSet inData("inData", "inData", *vars, Import(*dataTree));
+
   // number of events
   int nEvents = inData.numEntries();
   // check the structure of the data
@@ -279,20 +291,20 @@ void doOneDataFit(TTree *dataTree, TFile *saveFile, float binID[3],
   if(isMassFixed){
     m0.setConstant(true);
   }
-  RooRealVar sL("sigmaL", "sigmaL",sigmaL,0.01,0.2);
-  RooRealVar sR("sigmaR", "sigmaR",sigmaR,0.01,0.2);
+  RooRealVar sL("sigmaL", "sigmaL",sigmaL,0.01,0.2); // sigmaL,0.01,0.2
+  RooRealVar sR("sigmaR", "sigmaR",sigmaR,0.01,0.2); // sigmaR,0.01,0.2
   if (isSigmaFixed) {
     sL.setConstant(true);
     sR.setConstant(true);    
   }
-  RooRealVar nL("nL", "nL", nParL,1,20);    
-  RooRealVar nR("nR", "nR", nParR,1,20);    
+  RooRealVar nL("nL", "nL", 135,120,150); // prev lim = (1, 20)  
+  RooRealVar nR("nR", "nR", 10,0.1,100); // prev lim = (1, 20)    
   if (isNFixed) {
     nL.setConstant(true);
     nR.setConstant(true);    
   }
-  RooRealVar aL("alphaL", "alphaL", alphaL,0.1,5);
-  RooRealVar aR("alphaR", "alphaR", alphaR,0.1,5);  
+  RooRealVar aL("alphaL", "alphaL", 1.08,0.5,2); // prev lim = (0.1,5)
+  RooRealVar aR("alphaR", "alphaR", 2.84,2,5); // prev lim = (0.1,5)  
   if (isAlphaFixed) {
     aL.setConstant(true);
     aR.setConstant(true);    
@@ -326,6 +338,12 @@ void doOneDataFit(TTree *dataTree, TFile *saveFile, float binID[3],
   RooRealVar nJpsi("N_{J/#psi}","Number of J/psi events",0.8*nEvents,0.05*nEvents,nEvents);
   RooRealVar nPsi2s("N_{#psi'}","Number of psi(2s) events",0.05*nEvents,0,nEvents);
   RooRealVar nBg("N_{bg}","Number of BG events",0.15*nEvents,0,nEvents);
+  if(excludeBkg){
+    p1.setVal(0);
+    p1.setConstant(kTRUE);
+    nBg.setVal(0);
+    nBg.setConstant(kTRUE);
+  }
 
   RooAddPdf *fitData = NULL;
   if (includePsi2s) {
@@ -339,7 +357,7 @@ void doOneDataFit(TTree *dataTree, TFile *saveFile, float binID[3],
 
   // --> perform the fit
   RooFitResult *r = NULL;
-  r = fitData->fitTo(inData,Save(),Extended(kTRUE),Save());
+  r = fitData->fitTo(inData,Save(),Extended(kTRUE),Save(),MaxCalls(10000));
 
   // check the status of the fit
   int fitStatus = r->status();
@@ -528,6 +546,8 @@ void fitJPsiInPhiBins(string nClass = "noSelection", int nPhiBins = 12, const ch
   gNeutronClass = nClass;
   // number of bins in phi
   gPhiBins = nPhiBins;
+  // is MC or data?
+  gIsMC = isMC;
 
   // get the tree with the data
   TFile *dataFile = NULL;
